@@ -3,21 +3,11 @@
  - Michael Bernhardt and Cole Cooper
 */
 
-import java.io.BufferedWriter;
-import java.io.File;
-import java.io.FileNotFoundException;
-import java.io.FileOutputStream;
-import java.io.FileWriter;
-import java.io.IOException;
-import java.io.PrintStream;
+import java.io.*;
+import java.util.*;
 import java.text.NumberFormat;
 import java.text.SimpleDateFormat;
-import java.util.Scanner;
 
-import javax.swing.text.DateFormatter;
-
-import java.util.ArrayList;
-import java.util.Date;
 
 public class Project3 {
 	public static final int MAX_PEOPLE = 100;
@@ -34,13 +24,16 @@ public class Project3 {
 			choice = printOptionMenu();
 			runOptionSwitch(choice, personList);
 			if (choice == EXIT) {
-				printReportFile(personList);
 				break;
 			}
 				
 		}
 	}
 
+	/**
+	 * Print a report of all Persons to file
+	 * @param personList				Person ArrayList
+	 */
 	public static void printReportFile(ArrayList<Person> personList) {
 		if (!isToPrint())
 			return;
@@ -53,18 +46,50 @@ public class Project3 {
 			bw.write("\t\tReport created on " + dateFormat.format(date) + "\n");
 			bw.write("\t\t***************************\n\n\n");
 			
+			bw.write("Faculty Members\n---------------\n");
+			printPeopleToFile(personList, new Faculty(null), bw);
+			
+			bw.write("Staff Members\n-------------\n");
+			printPeopleToFile(personList, new Staff(null), bw);
+			
+			bw.write("Students\n--------\n");
+			printPeopleToFile(personList, new Student(null), bw);
 			
 			bw.close();
+			System.out.println("\nReport created!");
 		} catch (FileNotFoundException e) {
 			System.out.println("Error creating file");
 		} catch (IOException e) {
 			System.out.println("Error writing to file");
 		}
+	}
+	
+	/**
+	 * Print all people of a specified class
+	 * @param personList				Person ArrayList
+	 * @param personType				Person to identify type being printed
+	 * @param bw						BufferedWriter to print to file
+	 * @throws IOException 
+	 */
+	public static void printPeopleToFile(ArrayList<Person> personList, Person personType, BufferedWriter bw) throws IOException {
+		int counter = 1;
 		
+		for (Person p: personList) {
+			if (personType instanceof Faculty && p instanceof Faculty
+					|| personType instanceof Staff && p instanceof Staff 
+					|| personType instanceof Student && p instanceof Student) {
+				bw.write(counter + ". ");
+				p.printToFile(bw);
+				counter++;
+			}
+				
+			
+		}
+		bw.write("\n\n");
 	}
 	
 	public static boolean isToPrint() {
-		System.out.print("\n\nWould you like to create the report? (Y/N): ");
+		System.out.print("\n\n\nWould you like to create the report? (Y/N): ");
 		String yesNo = new java.util.Scanner(System.in).nextLine();
 		
 		if (yesNo.charAt(0) == 'y' || yesNo.charAt(0) == 'Y')
@@ -99,7 +124,8 @@ public class Project3 {
 				Person.findAndPrintPerson(people, choice, Person.casePersonType(choice));
 				break;
 			case 7:
-				System.out.println("\n\n\nGoodbye!\n");
+				printReportFile(people);
+				System.out.println("\nGoodbye!\n");
 				break;
 			default: // Invalid selection already handled in getOptionSelected
 				break;
@@ -174,25 +200,9 @@ abstract class Person {
 	protected static final String FACULTY = "Faculty",
 			   					  STAFF   = "Staff member",
 			                      STUDENT = "Student";
-	private static final String INVALID_ID_MSG = "Invalid ID format. Must be LetterLetterDigitDigitDigitDigit";
-
 	// Fields
 	private String name;
 	private String id;
-
-	/**
-	 * Add a Person to the first null slot of a Person array
-	 * @param people				Person array
-	 * @param personToAdd			Person being added to array
-	 */
-	public static void addToArray(Person[] people, Person personToAdd) {
-		for (int i = 0; i < people.length; i++) {
-			if (people[i] == null) {
-				people[i] = personToAdd;
-				break;
-			}
-		}
-	}
 
 	/**
 	 * Check if a Person matches their string representation
@@ -225,7 +235,8 @@ abstract class Person {
 		
 		int idIndex = idList.indexOf(inputId);
 		
-		if (idIndex != -1)
+		// Print Person info if they are found and match the type being queried
+		if (idIndex != -1 && validatePersonType(peopleList.get(idIndex), personType))
 			peopleList.get(idIndex).print();
 		else
 			System.out.println("\n\n No " + personType + " matched!\n\n");
@@ -278,40 +289,66 @@ abstract class Person {
 
 	// Methods to include in Faculty, Staff, and Student classes
 	public abstract void print();
+	public void printToFile(BufferedWriter bw) throws IOException {
+		bw.write("\t" + getName() + "\n");
+		bw.write("\tID: " + getId() + "\n");
+	}
 	
 	/**
-	 * Get name and ID from user
+	 * Get Person name and ID from user
+	 * @param p							Person being prompted for
 	 */
 	public void promptForInfo(Person p) {
 		promptForName(p);
-		promptForID();
+		promptForID(p);
 	}
 	
-	// TODO print class type
+	/**
+	 * Prompt for Person name
+	 * @param p							Person being prompted for
+	 */
 	private void promptForName(Person p) {
 		System.out.print("\n\tName ");
-		if (p instanceof Student)
-			System.out.print("of Student: ");
-		if (p instanceof Staff)
-			System.out.print("of Staff: ");
-		if (p instanceof Faculty)
-			System.out.print("of Faculty: ");
+		printTrailingQuery(p);
 		setName(new java.util.Scanner(System.in).nextLine());
 	}
 	
-	private void promptForID(){
+	/**
+	 * Prompt for Person ID
+	 * @param p							Person being prompted for
+	 */
+	private void promptForID(Person p){
 		try {
-			System.out.print("\n\tID: ");
+			System.out.print("\n\tID ");
+			printTrailingQuery(p);
 			setId(new java.util.Scanner(System.in).nextLine());
 			if (!isValidID(getId()))
 				throw new IdException();
 		}
 		catch(Exception e) {
 			System.out.println("\n\t" + e.getMessage());
-			promptForID();
+			promptForID(p);
 		}
 	}
 	
+	/**
+	 * Print the Person type following a query for Person name or ID
+	 * @param p							Person being prompted for
+	 */
+	private void printTrailingQuery(Person p) {
+		if (p instanceof Student)
+			System.out.print("of Student: ");
+		if (p instanceof Staff)
+			System.out.print("of Staff: ");
+		if (p instanceof Faculty)
+			System.out.print("of Faculty: ");
+	}
+	
+	/**
+	 * Determine if an ID is valid
+	 * @param id				ID input from user
+	 * @return					true of false
+	 */
 	private boolean isValidID(String id) {
 		// Check id to make sure it is correct length
 		if (id.length() != 6)
@@ -434,45 +471,57 @@ class Student extends Person {
 		promptForInfo();
 		calculateNetTuitionAndDiscount();
 	}
+	
+	public Student(Object o ) {
+		
+	}
 
 	/**
 	 * Prompt the user to input the information for a Student
 	 */
 	public void promptForInfo() {
-		Scanner scnr = new Scanner(System.in);
 		System.out.println("\nEnter the student info:");
 
-		/*System.out.print("\n\tName of Student: ");
-		this.setName(scnr.nextLine());
-
-		System.out.print("\n\tID: ");
-		this.setId(scnr.nextLine());*/
 		super.promptForInfo(this);
 
-		// If invalid format input to gpa or credit hours, set to 0
-		System.out.print("\n\tGpa: ");
-		String gpaString = scnr.nextLine();
-		try {
-			this.gpa = Double.parseDouble(gpaString);
-			if (this.gpa > 4.0 || this.gpa < 0.0)
-				throw new NumberFormatException();
-		}
-		catch (NumberFormatException e) {
-			this.gpa = 0.0;
-		}
+		promptForGpa();
+		promptForCreditHours();		
 
+		System.out.println("\nStudent Added!\n\n");
+	}
+	
+	/**
+	 * Prompt user for valid number of credit hours
+	 */
+	private void promptForCreditHours() {
 		System.out.print("\n\tCredit Hours: ");
-		String creditHourString = scnr.nextLine();
+		String creditHourString = new java.util.Scanner(System.in).nextLine();
 		try {
 			this.creditHours = Integer.parseInt(creditHourString);
 			if (this.creditHours < 0)
 				throw new NumberFormatException();
 		}
 		catch (NumberFormatException e) {
-			this.creditHours = 0;
+			System.out.println("\n\t\tInvalid credit hours. Please try again.");
+			promptForCreditHours();
 		}
-
-		System.out.println("\nStudent Added!\n\n");
+	}
+	
+	/**
+	 * Prompt user for a valid GPA
+	 */
+	private void promptForGpa() {
+		System.out.print("\n\tGpa: ");
+		String gpaString = new java.util.Scanner(System.in).nextLine();
+		try {
+			this.gpa = Double.parseDouble(gpaString);
+			if (this.gpa > 4.0 || this.gpa < 0.0)
+				throw new NumberFormatException();
+		}
+		catch (NumberFormatException e) {
+			System.out.println("\n\t\tInvalid GPA. Please try again.");
+			promptForGpa();
+		}
 	}
 
 	/**
@@ -520,6 +569,14 @@ class Student extends Person {
 
 		this.printDashesLine();
 		System.out.println();
+	}
+	
+	@Override
+	public void printToFile(BufferedWriter bw) throws IOException {
+		super.printToFile(bw);
+		bw.write("\tGpa: " + getGpa() + "\n");
+		bw.write("\tCredit hours: " + getCreditHours() + "\n");
+		bw.write("\n");
 	}
 
 	@Override
@@ -579,20 +636,18 @@ class Faculty extends Employee {
 	public Faculty() {
 		promptForInfo();
 	}
+	
+	public Faculty(Object o) {
+		
+	}
 
 	/**
 	 * Prompt the user for a Faculty's information
 	 */
-	
 	public void promptForInfo() {
 		Scanner scnr = new Scanner(System.in);
 		System.out.println("\nEnter the faculty info:");
 
-		/*System.out.print("\n\tName of Faculty: ");
-		this.setName(scnr.nextLine());
-
-		System.out.print("\n\tID: ");
-		this.setId(scnr.nextLine());*/
 		super.promptForInfo(this);
 
 		// Check if rank valid
@@ -608,7 +663,6 @@ class Faculty extends Employee {
 		this.promptDepartment();
 
 		System.out.println("\n\nFaculty Added!\n\n");
-
 	}
 
 	/**
@@ -629,6 +683,13 @@ class Faculty extends Employee {
 		System.out.println(this);
 		this.printDashesLine();
 		System.out.println();
+	}
+	
+	@Override
+	public void printToFile(BufferedWriter bw) throws IOException {
+		super.printToFile(bw);
+		bw.write("\t" + getRank() + ", " + getDepartment() + "\n");
+		bw.write("\n");
 	}
 
 	@Override
@@ -668,6 +729,10 @@ class Staff extends Employee {
 	public Staff() {
 		promptForInfo();
 	}
+	
+	public Staff(Object o) {
+		
+	}
 
 	/**
 	 * Prompt user for a Staff's information
@@ -675,11 +740,6 @@ class Staff extends Employee {
 	public void promptForInfo() {
 		Scanner scnr = new Scanner(System.in);
 
-		/*System.out.print("\n\tName of Staff Member: ");
-		this.setName(scnr.nextLine());
-
-		System.out.print("\n\tEnter the ID: ");
-		this.setId(scnr.nextLine());*/
 		super.promptForInfo(this);
 
 		this.promptDepartment();
@@ -715,17 +775,28 @@ class Staff extends Employee {
 		this.printDashesLine();
 		System.out.println();
 	}
+	
+	@Override
+	public void printToFile(BufferedWriter bw) throws IOException {
+		super.printToFile(bw);
+		bw.write("\t" + getDepartment() + ", " + getStatusString() + "\n");
+		bw.write("\n");
+	}
 
 	@Override
 	public String toString() {
 		String retString = this.getName() + "\t\t" + this.getId() + "\n\n" + this.getDepartment() + " Department, ";
-
-		if (this.getStatus().equalsIgnoreCase(PART_TIME))
-			retString += "Part Time";
-		else
-			retString += "Full Time";
+		
+		retString += getStatusString();
 
 		return retString;
+	}
+	
+	private String getStatusString() {
+		if (this.getStatus().equalsIgnoreCase(PART_TIME))
+			return "Part Time";
+		else
+			return "Full Time";
 	}
 
 	/**
@@ -740,15 +811,15 @@ class Staff extends Employee {
 	}
 }
 
+/**
+ * 
+ * IdException class - thrown when ID is not correct format
+ *
+ */
 class IdException extends RuntimeException {
 	private static final String INVALID_ID_MSG = "Invalid ID format. Must be LetterLetterDigitDigitDigitDigit";
 	
 	public IdException() {
 		super(INVALID_ID_MSG);
-	}
-	
-	@Override
-	public String toString() {
-		return INVALID_ID_MSG;
 	}
 }
