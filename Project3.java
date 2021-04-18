@@ -1,7 +1,8 @@
 /*
- - Project 3
- - Michael Bernhardt and Cole Cooper
-*/
+ * Project 3
+ * Michael Bernhardt and Cole Cooper
+ * COP 3330 MWF 1:30
+ */
 
 import java.io.*;
 import java.util.*;
@@ -10,12 +11,11 @@ import java.text.SimpleDateFormat;
 
 
 public class Project3 {
-	public static final int MAX_PEOPLE = 100;
 	public static final int EXIT = 7;
 
 	public static void main(String[] args) {
 		int choice = 0;
-		ArrayList<Person> personList = new ArrayList<>();
+		ArrayList<Person> personList = new ArrayList<>(); // Person List
 
 		System.out.println("\t\t\tWelcome to my Personal Management Program\n\n");
 
@@ -35,8 +35,10 @@ public class Project3 {
 	 * @param personList				Person ArrayList
 	 */
 	public static void printReportFile(ArrayList<Person> personList) {
+		// Prompt is user wants to print data
 		if (!isToPrint())
 			return;
+		
 		Date date = new Date();
 		SimpleDateFormat dateFormat = new SimpleDateFormat("M/dd/yyyy");
 		
@@ -75,19 +77,24 @@ public class Project3 {
 		int counter = 1;
 		
 		for (Person p: personList) {
-			if (personType instanceof Faculty && p instanceof Faculty
-					|| personType instanceof Staff && p instanceof Staff 
-					|| personType instanceof Student && p instanceof Student) {
+			if ((personType instanceof Faculty && p instanceof Faculty)
+					|| (personType instanceof Staff && p instanceof Staff) 
+					|| (personType instanceof Student && p instanceof Student)) {
 				bw.write(counter + ". ");
 				p.printToFile(bw);
 				counter++;
 			}
-				
-			
 		}
+		
+		if (counter == 1)
+			bw.write("\t[None]");
 		bw.write("\n\n");
 	}
 	
+	/**
+	 * Prompt user whether they want to print data to file
+	 * @return						True or false
+	 */
 	public static boolean isToPrint() {
 		System.out.print("\n\n\nWould you like to create the report? (Y/N): ");
 		String yesNo = new java.util.Scanner(System.in).nextLine();
@@ -101,35 +108,37 @@ public class Project3 {
 	/**
 	 * Execute an action to set or get info, or exit
 	 * @param choice				User input integer selection
-	 * @param people				Array of Person
+	 * @param people				Person ArrayList
 	 */
 	public static void runOptionSwitch(int choice, ArrayList<Person> people) {
+		Person inputPerson = null;
 
 		switch(choice) {
 			case 1: // Enter Faculty info
-				Faculty tempFaculty = new Faculty();
-				people.add(tempFaculty);
+				inputPerson = new Faculty();
 				break;
 			case 2: // Enter Student info
-				Student tempStudent = new Student();
-				people.add(tempStudent);
+				inputPerson = new Student();
 				break;
 			case 5: // Enter Staff info
-				Staff tempStaff = new Staff();
-				people.add(tempStaff);
+				inputPerson = new Staff();
 				break;
 			case 3: // Print Student tuition info
 			case 4: // Print Faculty info
 			case 6: // Print Staff info
 				Person.findAndPrintPerson(people, choice, Person.casePersonType(choice));
 				break;
-			case 7:
+			case 7: // Exit
 				printReportFile(people);
 				System.out.println("\nGoodbye!\n");
 				break;
 			default: // Invalid selection already handled in getOptionSelected
 				break;
 		}
+		
+		// If Person entered, add them to Person List
+		if (choice == 1 || choice == 2 || choice == 5)
+			people.add(inputPerson);
 	}
 
 	/**
@@ -163,7 +172,7 @@ public class Project3 {
 		try {
 			selectionInt = Integer.parseInt(selection);
 		}
-		catch (NumberFormatException e) {
+		catch (Exception e) {
 			return true;
 		}
 
@@ -195,7 +204,7 @@ public class Project3 {
  * Person abstract class
  *
  */
-abstract class Person {
+abstract class Person implements PersonActions{
 	// Constants
 	protected static final String FACULTY = "Faculty",
 			   					  STAFF   = "Staff member",
@@ -222,7 +231,6 @@ abstract class Person {
 	 * @param choice				User input integer selection
 	 * @param personType			String representation of the person type
 	 */
-
 	public static void findAndPrintPerson(ArrayList<Person> peopleList, int choice, String personType) {
 		Scanner scnr = new Scanner(System.in);
 		ArrayList<String> idList = new ArrayList<>();
@@ -237,7 +245,7 @@ abstract class Person {
 		
 		// Print Person info if they are found and match the type being queried
 		if (idIndex != -1 && validatePersonType(peopleList.get(idIndex), personType))
-			peopleList.get(idIndex).print();
+			peopleList.get(idIndex).printToConsole();
 		else
 			System.out.println("\n\n No " + personType + " matched!\n\n");
 	}
@@ -286,9 +294,12 @@ abstract class Person {
 	protected void printDashesLine() {
 		System.out.println("\n---------------------------------------------------------------------------\n");
 	}
-
-	// Methods to include in Faculty, Staff, and Student classes
-	public abstract void print();
+	
+	/**
+	 * Print information to file
+	 * @param bw						BufferedWriter to file
+	 * @throws IOException
+	 */
 	public void printToFile(BufferedWriter bw) throws IOException {
 		bw.write("\t" + getName() + "\n");
 		bw.write("\tID: " + getId() + "\n");
@@ -453,7 +464,7 @@ abstract class Employee extends Person {
  * Student class
  *
  */
-class Student extends Person {
+class Student extends Person implements PersonActions {
 	// Constants
 	private static final double PRICE_PER_CREDIT_HOUR = 236.45,
 								ADMIN_FEE			  = 52.0,
@@ -472,8 +483,9 @@ class Student extends Person {
 		calculateNetTuitionAndDiscount();
 	}
 	
-	public Student(Object o ) {
-		
+	public Student(Object o) {
+		gpa = tuition = discount = 0;
+		creditHours = 0;
 	}
 
 	/**
@@ -554,8 +566,8 @@ class Student extends Person {
 	 * Print a Student's info
 	 */
 	@Override
-	public void print() {
-		NumberFormat n = NumberFormat.getCurrencyInstance();
+	public void printToConsole() {
+		NumberFormat n = NumberFormat.getCurrencyInstance(Locale.US);
 
 		System.out.println();
 		System.out.println("\nTuition Invoice for " + this.getName() + ":");
@@ -571,6 +583,11 @@ class Student extends Person {
 		System.out.println();
 	}
 	
+	/**
+	 * Print Student to file
+	 * @param bw				BufferedWriter to file
+	 * @throws IOException
+	 */
 	@Override
 	public void printToFile(BufferedWriter bw) throws IOException {
 		super.printToFile(bw);
@@ -594,11 +611,9 @@ class Student extends Person {
 		return this.gpa;
 	}
 
-
 	public void setGpa(double gpa) {
 		this.gpa = gpa;
 	}
-
 
 	public int getCreditHours() {
 		return this.creditHours;
@@ -638,31 +653,36 @@ class Faculty extends Employee {
 	}
 	
 	public Faculty(Object o) {
-		
+		rank = "";
 	}
 
 	/**
 	 * Prompt the user for a Faculty's information
 	 */
 	public void promptForInfo() {
-		Scanner scnr = new Scanner(System.in);
 		System.out.println("\nEnter the faculty info:");
 
 		super.promptForInfo(this);
 
-		// Check if rank valid
+		promptForRank();		
+
+		this.promptDepartment();
+
+		System.out.println("\n\nFaculty Added!\n\n");
+	}
+	
+	/**
+	 * Prompt for rank
+	 */
+	public void promptForRank() {
 		do {
 			System.out.print("\n\tRank: ");
-			this.setRank(scnr.nextLine());
+			this.setRank(new java.util.Scanner(System.in).nextLine());
 			if (!this.hasValidRank())
 				System.out.println("\n\t\t\"" + this.getRank() + "\" is invalid");
 		} while (!this.hasValidRank());
 
 		this.rank = capitalizeFirstLetter(this.rank);
-
-		this.promptDepartment();
-
-		System.out.println("\n\nFaculty Added!\n\n");
 	}
 
 	/**
@@ -677,7 +697,7 @@ class Faculty extends Employee {
 	 * Print a Faculty's info
 	 */
 	@Override
-	public void print() {
+	public void printToConsole() {
 		System.out.println();
 		this.printDashesLine();
 		System.out.println(this);
@@ -685,6 +705,11 @@ class Faculty extends Employee {
 		System.out.println();
 	}
 	
+	/**
+	 * Print Faculty info to file
+	 * @param bw				BufferedWriter to file
+	 * @throws IOException
+	 */
 	@Override
 	public void printToFile(BufferedWriter bw) throws IOException {
 		super.printToFile(bw);
@@ -704,7 +729,6 @@ class Faculty extends Employee {
 		return this.rank;
 	}
 
-
 	public void setRank(String rank) {
 		this.rank = rank;
 	}
@@ -715,7 +739,7 @@ class Faculty extends Employee {
  * Staff class
  *
  */
-class Staff extends Employee {
+class Staff extends Employee implements PersonActions{
 	// Constants
 	private static final String PART_TIME = "P",
 							    FULL_TIME = "F";
@@ -731,29 +755,34 @@ class Staff extends Employee {
 	}
 	
 	public Staff(Object o) {
-		
+		status = "";
 	}
 
 	/**
 	 * Prompt user for a Staff's information
 	 */
 	public void promptForInfo() {
-		Scanner scnr = new Scanner(System.in);
-
 		super.promptForInfo(this);
 
 		this.promptDepartment();
+		
+		promptForStatus();
 
+		System.out.println("\n\nStaff member Added!\n\n");
+	}
+	
+	/**
+	 * Prompt for Faculty status
+	 */
+	public void promptForStatus() {
 		do {
 			System.out.print("\n\tStaus, Enter P for Part Time, or Enter F for Full Time: ");
-			this.status = scnr.nextLine();
+			this.status = new java.util.Scanner(System.in).nextLine();
 			if (!this.hasValidStatus())
 				System.out.println("\n\t\t\"" + this.status + "\" is invalid");
 		} while (!this.hasValidStatus());
 
 		this.status = this.status.toUpperCase();
-
-		System.out.println("\n\nStaff member Added!\n\n");
 	}
 
 	/**
@@ -768,7 +797,7 @@ class Staff extends Employee {
 	 * Print a Staff's information
 	 */
 	@Override
-	public void print() {
+	public void printToConsole() {
 		System.out.println();
 		this.printDashesLine();
 		System.out.println(this);
@@ -776,6 +805,11 @@ class Staff extends Employee {
 		System.out.println();
 	}
 	
+	/**
+	 * Print Staff info to file
+	 * @param bw			BufferedWriter to file
+	 * @throws IOException
+	 */
 	@Override
 	public void printToFile(BufferedWriter bw) throws IOException {
 		super.printToFile(bw);
@@ -792,6 +826,10 @@ class Staff extends Employee {
 		return retString;
 	}
 	
+	/**
+	 * Return the status as its full string
+	 * @return					Status String
+	 */
 	private String getStatusString() {
 		if (this.getStatus().equalsIgnoreCase(PART_TIME))
 			return "Part Time";
@@ -822,4 +860,15 @@ class IdException extends RuntimeException {
 	public IdException() {
 		super(INVALID_ID_MSG);
 	}
+}
+
+/**
+ * 
+ * Interface for common methods
+ * 
+ */
+interface PersonActions {
+	public void printToConsole();
+	public void printToFile(BufferedWriter bw) throws IOException;
+	public void promptForInfo();
 }
